@@ -127,6 +127,63 @@ def view_bookings():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
+    import requests
+
+VERIFY_TOKEN = "drshikhaclinic_secure_token" # You can choose any password string here
+ACCESS_TOKEN = "YOUR_META_INSTAGRAM_ACCESS_TOKEN" # From your Meta Developer Dashboard
+PHONE_NUMBER_ID = "YOUR_PHONE_OR_INSTAGRAM_ACCOUNT_ID"
+
+@app.route('/webhook', methods=['GET', 'POST'])
+def webhook():
+    if request.method == 'GET':
+        # Meta Webhook Verification
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        
+        if mode and token:
+            if mode == 'subscribe' and token == VERIFY_TOKEN:
+                return challenge, 200
+            else:
+                return "Verification failed", 403
+        return "Hello, this is the webhook endpoint.", 200
+
+    elif request.method == 'POST':
+        data = request.json
+        try:
+            # Parse incoming Instagram/Messenger message
+            messaging_event = data['entry'][0]['messaging'][0]
+            if 'message' in messaging_event and 'text' in messaging_event['message']:
+                sender_id = messaging_event['sender']['id']
+                message_text = messaging_event['message']['text']
+                
+                # Configure Gemini model with the booking tool
+                model = genai.GenerativeModel(
+                    model_name='gemini-1.5-flash',
+                    tools=[book_clinic_token],
+                    system_instruction="You are a polite AI receptionist for Dr. Shikha's Clinic in Bidar. Help patients book tokens using the book_clinic_token tool."
+                )
+                
+                # Get response from Gemini
+                response = model.generate_content(message_text)
+                reply_text = response.text
+                
+                # Send reply back to user via Instagram API
+                send_instagram_message(sender_id, reply_text)
+                
+        except Exception as e:
+            print(f"Error processing webhook: {e}")
+            
+        return "EVENT_RECEIVED", 200
+
+def send_instagram_message(recipient_id, message_text):
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
+    payload = {
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+    headers = {"Content-Type": "application/json"}
+    requests.post(url, json=payload, headers=headers)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
 
 @app.route('/view-bookings', methods=['GET'])
