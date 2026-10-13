@@ -112,10 +112,10 @@ def view_bookings():
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
 
-
 @app.route('/view-bookings', methods=['GET'])
 def view_bookings():
     try:
+        import sqlite3
         conn = sqlite3.connect('clinic.db')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM bookings")
@@ -124,3 +124,8 @@ def view_bookings():
         return jsonify({"bookings": data}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
+
