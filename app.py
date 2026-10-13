@@ -4,6 +4,23 @@ from flask import Flask, request, jsonify
 import google.generativeai as genai
 
 app = Flask(__name__)
+def init_db():
+    conn = sqlite3.connect('clinic.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_name TEXT NOT NULL,
+            phone_number TEXT NOT NULL,
+            preferred_time TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Run database setup on startup
+init_db()
 
 # Configure Gemini API Key from environment variables
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
